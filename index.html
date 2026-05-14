@@ -10,6 +10,7 @@
       font-family: Arial, sans-serif;
       background: #f5f6f8;
       padding: 20px;
+      margin: 0;
     }
 
     .container {
@@ -24,6 +25,7 @@
     h1 {
       font-size: 22px;
       margin-bottom: 20px;
+      text-align: center;
     }
 
     label {
@@ -45,6 +47,10 @@
       border: 1px solid #ccc;
     }
 
+    textarea {
+      resize: vertical;
+    }
+
     button {
       margin-top: 22px;
       background: #1a73e8;
@@ -64,6 +70,7 @@
       padding: 12px;
       border-radius: 8px;
       display: none;
+      font-size: 14px;
     }
 
     .success {
@@ -75,6 +82,17 @@
       background: #fce8e6;
       color: #c5221f;
     }
+
+    .note {
+      margin-top: 14px;
+      font-size: 13px;
+      color: #666;
+      line-height: 1.4;
+    }
+
+    iframe {
+      display: none;
+    }
   </style>
 </head>
 
@@ -83,47 +101,84 @@
     <h1>Petty Cash Expense Form</h1>
 
     <form id="expenseForm">
-      <label>Дата расхода *</label>
-      <input type="date" name="expenseDate" required />
+      <label for="expenseDate">Дата расхода *</label>
+      <input
+        type="date"
+        id="expenseDate"
+        name="expenseDate"
+        required
+      />
 
-      <label>ФИО сотрудника *</label>
-      <input type="text" name="employeeName" required placeholder="Например: Ivan Ivanov" />
+      <label for="employeeName">ФИО сотрудника *</label>
+      <input
+        type="text"
+        id="employeeName"
+        name="employeeName"
+        required
+        placeholder="Например: Екатерина"
+      />
 
-      <label>Сумма *</label>
-      <input type="number" name="amount" required step="0.01" min="0.01" placeholder="Например: 125.50" />
+      <label for="amount">Сумма *</label>
+      <input
+        type="number"
+        id="amount"
+        name="amount"
+        required
+        step="0.01"
+        min="0.01"
+        placeholder="Например: 1000"
+      />
 
-      <label>Валюта</label>
-      <select name="currency">
+      <label for="currency">Валюта</label>
+      <select id="currency" name="currency">
         <option value="AED">AED</option>
         <option value="USD">USD</option>
         <option value="EUR">EUR</option>
         <option value="RUB">RUB</option>
       </select>
 
-      <label>Категория расхода</label>
-      <select name="category">
+      <label for="category">Категория расхода</label>
+      <select id="category" name="category">
         <option value="">Выберите категорию</option>
-        <option value="Materials">Materials / Материалы</option>
-        <option value="Office expenses">Office expenses / Хоз. расходы</option>
-        <option value="Travel expenses">Travel expenses / Командировочные</option>
-        <option value="Fuel / Transport">Fuel / Transport / Транспорт</option>
-        <option value="Other">Other / Прочее</option>
+        <option value="Materials / Материалы">Materials / Материалы</option>
+        <option value="Office expenses / Хоз. расходы">Office expenses / Хоз. расходы</option>
+        <option value="Travel expenses / Командировочные">Travel expenses / Командировочные</option>
+        <option value="Fuel / Transport / Транспорт">Fuel / Transport / Транспорт</option>
+        <option value="Meals / Питание">Meals / Питание</option>
+        <option value="Other / Прочее">Other / Прочее</option>
       </select>
 
-      <label>Комментарий</label>
-      <textarea name="comment" rows="3" placeholder="Кратко опишите расход"></textarea>
+      <label for="comment">Комментарий</label>
+      <textarea
+        id="comment"
+        name="comment"
+        rows="3"
+        placeholder="Кратко опишите расход"
+      ></textarea>
 
-      <label>Фото чека / подтверждение оплаты *</label>
-      <input type="file" name="receipt" accept="image/*,.pdf" required />
+      <label for="receipt">Фото чека / подтверждение оплаты *</label>
+      <input
+        type="file"
+        id="receipt"
+        name="receipt"
+        accept="image/*,.pdf"
+        required
+      />
 
       <button type="submit" id="submitBtn">Отправить</button>
     </form>
 
     <div id="message" class="message"></div>
+
+    <div class="note">
+      После отправки проверьте Google Таблицу и папку Google Drive.
+    </div>
   </div>
 
+  <iframe name="hidden_iframe" id="hidden_iframe"></iframe>
+
   <script>
-    const SCRIPT_URL = 'PASTE_YOUR_WEB_APP_URL_HERE';
+    const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbwp8rMvvYTDUyABLk-6ngeXHdo-SQsPfkSv8oWD8r_U0MMUeWrK3FiH1nY-Onu7gyu52Q/exec';
 
     const form = document.getElementById('expenseForm');
     const submitBtn = document.getElementById('submitBtn');
@@ -137,56 +192,99 @@
       hideMessage();
 
       try {
-        const formData = new FormData(form);
-        const file = formData.get('receipt');
+        const expenseDate = document.getElementById('expenseDate').value;
+        const employeeName = document.getElementById('employeeName').value.trim();
+        const amount = document.getElementById('amount').value;
+        const currency = document.getElementById('currency').value;
+        const category = document.getElementById('category').value;
+        const comment = document.getElementById('comment').value.trim();
+        const fileInput = document.getElementById('receipt');
+        const file = fileInput.files[0];
+
+        if (!expenseDate) {
+          throw new Error('Укажите дату расхода.');
+        }
+
+        if (!employeeName) {
+          throw new Error('Укажите ФИО сотрудника.');
+        }
+
+        if (!amount || Number(amount) <= 0) {
+          throw new Error('Укажите корректную сумму.');
+        }
 
         if (!file) {
-          throw new Error('Пожалуйста, загрузите файл чека.');
+          throw new Error('Загрузите фото чека или файл подтверждения.');
+        }
+
+        const maxFileSize = 5 * 1024 * 1024;
+
+        if (file.size > maxFileSize) {
+          throw new Error('Файл слишком большой. Загрузите файл до 5 MB.');
         }
 
         const fileBase64 = await fileToBase64(file);
 
-        const payload = new URLSearchParams();
+        const postForm = document.createElement('form');
+        postForm.method = 'POST';
+        postForm.action = SCRIPT_URL;
+        postForm.target = 'hidden_iframe';
+        postForm.style.display = 'none';
 
-        payload.append('expenseDate', formData.get('expenseDate'));
-        payload.append('employeeName', formData.get('employeeName'));
-        payload.append('amount', formData.get('amount'));
-        payload.append('currency', formData.get('currency'));
-        payload.append('category', formData.get('category'));
-        payload.append('comment', formData.get('comment'));
-        payload.append('fileBase64', fileBase64);
-        payload.append('fileName', file.name);
-        payload.append('mimeType', file.type || 'application/octet-stream');
+        addHiddenField(postForm, 'expenseDate', expenseDate);
+        addHiddenField(postForm, 'employeeName', employeeName);
+        addHiddenField(postForm, 'amount', amount);
+        addHiddenField(postForm, 'currency', currency);
+        addHiddenField(postForm, 'category', category);
+        addHiddenField(postForm, 'comment', comment);
+        addHiddenField(postForm, 'fileBase64', fileBase64);
+        addHiddenField(postForm, 'fileName', file.name);
+        addHiddenField(postForm, 'mimeType', file.type || 'application/octet-stream');
 
-        const response = await fetch(SCRIPT_URL, {
-          method: 'POST',
-          body: payload
-        });
+        document.body.appendChild(postForm);
+        postForm.submit();
 
-        const result = await response.json();
+        setTimeout(function() {
+          showMessage(
+            'Форма отправлена. Проверьте Google Таблицу и папку с чеками.',
+            'success'
+          );
 
-        if (!result.success) {
-          throw new Error(result.message || 'Ошибка отправки данных.');
-        }
+          form.reset();
+          submitBtn.disabled = false;
+          submitBtn.textContent = 'Отправить';
 
-        showMessage('Расход успешно отправлен. Спасибо!', 'success');
-        form.reset();
+          if (document.body.contains(postForm)) {
+            document.body.removeChild(postForm);
+          }
+        }, 3000);
 
       } catch (error) {
         showMessage(error.message, 'error');
-
-      } finally {
         submitBtn.disabled = false;
         submitBtn.textContent = 'Отправить';
       }
     });
 
+    function addHiddenField(formElement, name, value) {
+      const input = document.createElement('input');
+      input.type = 'hidden';
+      input.name = name;
+      input.value = value;
+      formElement.appendChild(input);
+    }
+
     function fileToBase64(file) {
-      return new Promise((resolve, reject) => {
+      return new Promise(function(resolve, reject) {
         const reader = new FileReader();
 
-        reader.onload = () => resolve(reader.result);
-        reader.onerror = () => reject(new Error('Не удалось прочитать файл.'));
+        reader.onload = function() {
+          resolve(reader.result);
+        };
+
+        reader.onerror = function() {
+          reject(new Error('Не удалось прочитать файл.'));
+        };
 
         reader.readAsDataURL(file);
       });
@@ -201,6 +299,7 @@
     function hideMessage() {
       messageBox.style.display = 'none';
       messageBox.textContent = '';
+      messageBox.className = 'message';
     }
   </script>
 </body>
